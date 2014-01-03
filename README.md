@@ -11,7 +11,7 @@ For the moment, setting this up will most likely require Java development knowle
 
 ### Notify My Android
 
-This small program makes use of Notify My Android ( https://www.notifymyandroid.com/ ) to get the Skype notifications to an Android device.  The Notify My Android app needs to be installed on the Android device and signed in.  You will also need to set up an account and obtain an API key - a straightforward process.  A $4.99 premium account is required if you are expecting more than one Skype message an hour. If you are expecting more than 800 you will need to persuade NMA it's a good idea. 
+My small program makes use of Notify My Android ( https://www.notifymyandroid.com/ ) to get the Skype notifications to an Android device.  The Notify My Android app needs to be installed on the Android device and signed in.  You will also need to set up an account and obtain an API key - a straightforward process.  A $4.99 premium account is required if you are expecting more than one Skype message an hour. If you are expecting more than 800 you will need to persuade NMA it's a good idea. 
 
 ### Notify My Pebble
 
@@ -25,7 +25,7 @@ I believe these to be an improved version of the now defunct Skype Java API, obt
 
 The program will need to be built and run on whichever machines you are running Skype on using the following key:
 
-java -Dnma.apikey=(apikey obtained from NMA) com.madeye.notify.SkypeNotifyMyAndroid
+    java -Dnma.apikey=(apikey obtained from NMA) com.madeye.notify.SkypeNotifyMyAndroid
 
 ## Known Issues
 
