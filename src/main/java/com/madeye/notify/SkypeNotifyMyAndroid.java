@@ -19,9 +19,9 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class NotifyMyAndroid {
+public class SkypeNotifyMyAndroid {
 
-    private static final Logger LOG = Logger.getLogger(NotifyMyAndroid.class.getName());
+    private static final Logger LOG = Logger.getLogger(SkypeNotifyMyAndroid.class.getName());
 
     private static final String PROP_APIKEY = "nma.apikey";
     private static final String PROP_APPLICATION = "nma.application_name";
@@ -49,7 +49,7 @@ public class NotifyMyAndroid {
     }
 
     public static void main(String[] args) throws Exception {
-        final NotifyMyAndroid nma = new NotifyMyAndroid();
+        final SkypeNotifyMyAndroid nma = new SkypeNotifyMyAndroid();
 
         Skype.setDaemon(false); // to prevent exiting from this program
         Skype.addChatMessageListener(new ChatMessageAdapter() {
@@ -69,13 +69,13 @@ public class NotifyMyAndroid {
         Skype.addUserListener(nma.createUserStatusListener());
     }
 
-    public NotifyMyAndroid(){
+    public SkypeNotifyMyAndroid(){
         InputStream is = null;
 
         try {
             this.apiKey = System.getProperty(PROP_APIKEY);
 
-            is = NotifyMyAndroid.class.getResourceAsStream("/notifymyandroid.properties");
+            is = SkypeNotifyMyAndroid.class.getResourceAsStream("/notifymyandroid.properties");
             Properties props = new Properties();
             props.load(is);
 
@@ -86,7 +86,7 @@ public class NotifyMyAndroid {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load configuration properties");
         } catch (URISyntaxException e) {
-            throw new RuntimeException("Failed to parse URI for NotifyMyAndroid");
+            throw new RuntimeException("Failed to parse URI for SkypeNotifyMyAndroid");
         } finally {
             if (is != null){
                 try {
@@ -129,18 +129,18 @@ public class NotifyMyAndroid {
             EntityUtils.consume(entity1);
 
             if (statusCode != 200){
-                throw new NotificationFailedException("Failed to call NotifyMyAndroid REST API - status code: " + statusCode);
+                throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API - status code: " + statusCode);
             }
         } catch (IOException e) {
-            throw new NotificationFailedException("Failed to call NotifyMyAndroid REST API");
+            throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API");
         } catch (URISyntaxException e) {
-            throw new NotificationFailedException("Failed to build URI for NotifyMyAndroid");
+            throw new NotificationFailedException("Failed to build URI for SkypeNotifyMyAndroid");
         } finally {
             if (response != null){
                 try {
                     response.close();
                 } catch (IOException e) {
-                    LOG.log(Level.SEVERE, "Failed to close HTTP connection to NotifyMyAndroid", e);
+                    LOG.log(Level.SEVERE, "Failed to close HTTP connection to SkypeNotifyMyAndroid", e);
                 }
             }
         }
