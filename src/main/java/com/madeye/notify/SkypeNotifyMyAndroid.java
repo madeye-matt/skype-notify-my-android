@@ -15,33 +15,43 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class SkypeNotifyMyAndroid {
 
+    private enum NotificationType { Status, Message };
+
     private static final Logger LOG = Logger.getLogger(SkypeNotifyMyAndroid.class.getName());
 
     private static final String PROP_APIKEY = "nma.apikey";
     private static final String PROP_APPLICATION = "nma.application_name";
     private static final String PROP_BASE_URL = "nma.base_url";
+    private static final String PROP_PRIORITY_BASE = "nma.priority.";
+
+    private static final int DEFAULT_PRIORITY = -100;
 
     private String apiKey;
     private String application;
     private URI baseUri;
 
+    private Map<NotificationType, Integer> priorityMap = new HashMap<NotificationType, Integer>();
+
     private class UserStatusListener extends UserListenerAdapter {
         @Override
         public void statusMonitor(User.Status status, User user) throws SkypeException {
-            String displayName = user.getDisplayName();
+            String userId = user.toString();
+            String displayName = user.getFullName();
 
-            displayName = StringUtils.isBlank(displayName) ? user.toString() : displayName;
+            displayName = StringUtils.isBlank(displayName) ? userId : displayName;
 
             String statusStr = status.toString();
 
             try {
-                sendNmaNotification(0, displayName, "Status: " + statusStr);
+                sendNmaNotification(NotificationType.Status, displayName, "Status: " + statusStr);
             } catch (NotificationFailedException e) {
                 LOG.log(Level.WARNING, "Failed to Notify My Android", e);
             }
@@ -60,7 +70,7 @@ public class SkypeNotifyMyAndroid {
                 System.out.println("From " + sender + ": " + content);
 
                 try {
-                    nma.sendNmaNotification(-1, sender, content);
+                    nma.sendNmaNotification(NotificationType.Message, sender, content);
                 } catch (NotificationFailedException e) {
                     LOG.log(Level.WARNING, "Failed to Notify My Android", e);
                 }
@@ -82,6 +92,16 @@ public class SkypeNotifyMyAndroid {
             String baseUrl = props.getProperty(PROP_BASE_URL);
             this.application = props.getProperty(PROP_APPLICATION);
 
+            for (NotificationType ntype : NotificationType.values()){
+                String propName = PROP_PRIORITY_BASE + ntype.name();
+                String propValueStr = props.getProperty(propName);
+                int propValue;
+
+                propValue = StringUtils.isBlank(propValueStr) ? DEFAULT_PRIORITY : Integer.parseInt(propValueStr);
+
+                this.priorityMap.put(ntype, propValue);
+            }
+
             this.baseUri = new URI(baseUrl);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load configuration properties");
@@ -102,45 +122,57 @@ public class SkypeNotifyMyAndroid {
         return new UserStatusListener();
     }
 
-    private void sendNmaNotification(int priority, String sender, String content) throws NotificationFailedException {
+    private void sendNmaNotification(NotificationType type, String sender, String content) throws NotificationFailedException {
         URIBuilder builder = new URIBuilder(this.baseUri);
 
-        builder.addParameter("apikey", this.apiKey);
-        builder.addParameter("application", this.application);
-        builder.addParameter("event", sender);
-        builder.addParameter("description", content);
-        builder.addParameter("priority", Integer.toString(priority));
+        Integer priority = this.priorityMap.get(type);
 
-        CloseableHttpResponse response = null;
+        if (priority == null){
+            priority = DEFAULT_PRIORITY;
+        }
 
-        try {
-            CloseableHttpClient httpclient = HttpClients.createDefault();
-
-            URI uri = builder.build();
-            HttpGet get = new HttpGet(uri);
-
-            response = httpclient.execute(get);
-
-            StatusLine status = response.getStatusLine();
-
-            int statusCode = status.getStatusCode();
-
-            HttpEntity entity1 = response.getEntity();
-            EntityUtils.consume(entity1);
-
-            if (statusCode != 200){
-                throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API - status code: " + statusCode);
+        if (priority >= -2){
+            if (priority > 2){
+                priority = 2;
             }
-        } catch (IOException e) {
-            throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API");
-        } catch (URISyntaxException e) {
-            throw new NotificationFailedException("Failed to build URI for SkypeNotifyMyAndroid");
-        } finally {
-            if (response != null){
-                try {
-                    response.close();
-                } catch (IOException e) {
-                    LOG.log(Level.SEVERE, "Failed to close HTTP connection to SkypeNotifyMyAndroid", e);
+
+            builder.addParameter("apikey", this.apiKey);
+            builder.addParameter("application", this.application);
+            builder.addParameter("event", sender);
+            builder.addParameter("description", content);
+            builder.addParameter("priority", Integer.toString(priority));
+
+            CloseableHttpResponse response = null;
+
+            try {
+                CloseableHttpClient httpclient = HttpClients.createDefault();
+
+                URI uri = builder.build();
+                HttpGet get = new HttpGet(uri);
+
+                response = httpclient.execute(get);
+
+                StatusLine status = response.getStatusLine();
+
+                int statusCode = status.getStatusCode();
+
+                HttpEntity entity1 = response.getEntity();
+                EntityUtils.consume(entity1);
+
+                if (statusCode != 200){
+                    throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API - status code: " + statusCode);
+                }
+            } catch (IOException e) {
+                throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API");
+            } catch (URISyntaxException e) {
+                throw new NotificationFailedException("Failed to build URI for SkypeNotifyMyAndroid");
+            } finally {
+                if (response != null){
+                    try {
+                        response.close();
+                    } catch (IOException e) {
+                        LOG.log(Level.SEVERE, "Failed to close HTTP connection to SkypeNotifyMyAndroid", e);
+                    }
                 }
             }
         }
