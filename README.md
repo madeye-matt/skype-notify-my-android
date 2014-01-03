@@ -25,7 +25,7 @@ I believe these to be an improved version of the now defunct Skype Java API, obt
 
 The program will need to be built and run on whichever machines you are running Skype on using the following key:
 
-java -Dnma.apikey=<apikey obtained from NMA> com.madeye.notify.SkypeNotifyMyAndroid
+java -Dnma.apikey=(apikey obtained from NMA) com.madeye.notify.SkypeNotifyMyAndroid
 
 ## Known Issues
 
