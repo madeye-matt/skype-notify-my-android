@@ -27,3 +27,7 @@ The program will need to be built and run on whichever machines you are running 
 
 java -Dnma.apikey=<apikey obtained from NMA> com.madeye.notify.SkypeNotifyMyAndroid
 
+## Known Issues
+
++ It is not currently possible to filter the messages and notifications, so you get all status changes and messages. The continual status changes are particularly annoying.
+
