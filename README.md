@@ -44,5 +44,6 @@ The program will need to be built and run on whichever machines you are running 
 
 ## Known Issues
 
-+ At the moment, none :-)
++ Total lack of unit tests
++ At the time of writing, this code has only been tested on Fedora Linux
 
