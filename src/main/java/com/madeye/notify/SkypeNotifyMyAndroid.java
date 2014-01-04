@@ -11,6 +11,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -31,6 +33,7 @@ public class SkypeNotifyMyAndroid {
     private static final String PROP_APPLICATION = "nma.application_name";
     private static final String PROP_BASE_URL = "nma.base_url";
     private static final String PROP_PRIORITY_BASE = "nma.priority.";
+    private static final String PROP_USER_BASE = "nma.users.";
 
     private static final int DEFAULT_PRIORITY = -100;
 
@@ -39,6 +42,7 @@ public class SkypeNotifyMyAndroid {
     private URI baseUri;
 
     private Map<NotificationType, Integer> priorityMap = new HashMap<NotificationType, Integer>();
+    private Map<String, Integer> userPriorityBoost = new HashMap<String, Integer>();
 
     private class UserStatusListener extends UserListenerAdapter {
         @Override
@@ -51,7 +55,7 @@ public class SkypeNotifyMyAndroid {
             String statusStr = status.toString();
 
             try {
-                sendNmaNotification(NotificationType.Status, displayName, "Status: " + statusStr);
+                sendNmaNotification(NotificationType.Status, userId, displayName, "Status: " + statusStr);
             } catch (NotificationFailedException e) {
                 LOG.log(Level.WARNING, "Failed to Notify My Android", e);
             }
@@ -59,18 +63,25 @@ public class SkypeNotifyMyAndroid {
     }
 
     public static void main(String[] args) throws Exception {
-        final SkypeNotifyMyAndroid nma = new SkypeNotifyMyAndroid();
+        final SkypeNotifyMyAndroid nma;
+
+        if (args.length > 0){
+            nma = new SkypeNotifyMyAndroid(args[0]);
+        } else {
+            nma = new SkypeNotifyMyAndroid();
+        }
 
         Skype.setDaemon(false); // to prevent exiting from this program
         Skype.addChatMessageListener(new ChatMessageAdapter() {
             public void chatMessageReceived(ChatMessage received) throws SkypeException {
                 String content = received.getContent();
                 String sender = received.getSenderDisplayName();
+                String userId = received.getId();
 
                 System.out.println("From " + sender + ": " + content);
 
                 try {
-                    nma.sendNmaNotification(NotificationType.Message, sender, content);
+                    nma.sendNmaNotification(NotificationType.Message, userId, sender, content);
                 } catch (NotificationFailedException e) {
                     LOG.log(Level.WARNING, "Failed to Notify My Android", e);
                 }
@@ -80,6 +91,10 @@ public class SkypeNotifyMyAndroid {
     }
 
     public SkypeNotifyMyAndroid(){
+        this(null);
+    }
+
+    public SkypeNotifyMyAndroid(String userBoostFile){
         InputStream is = null;
 
         try {
@@ -102,6 +117,10 @@ public class SkypeNotifyMyAndroid {
                 this.priorityMap.put(ntype, propValue);
             }
 
+            if (StringUtils.isBlank(userBoostFile) == false){
+                this.userPriorityBoost = loadUserPriorityBoostFile(userBoostFile);
+            }
+
             this.baseUri = new URI(baseUrl);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load configuration properties");
@@ -118,18 +137,55 @@ public class SkypeNotifyMyAndroid {
         }
     }
 
+    private Map<String, Integer> loadUserPriorityBoostFile(String filename) throws IOException {
+        Properties props = new Properties();
+        BufferedReader reader = new BufferedReader(new FileReader(filename));
+
+        props.load(reader);
+
+        Map<String, Integer> boostMap = new HashMap<String, Integer>();
+
+        for (String propertyName : props.stringPropertyNames()){
+            if (propertyName.startsWith(PROP_USER_BASE)){
+                String name = propertyName.substring(PROP_USER_BASE.length());
+                String valueStr = props.getProperty(propertyName);
+
+                if (StringUtils.isBlank(valueStr) == false){
+                    int value = Integer.parseInt(valueStr);
+
+                    boostMap.put(name, value);
+                }
+            }
+        }
+        reader.close();
+
+        return boostMap;
+    }
+
     private UserStatusListener createUserStatusListener(){
         return new UserStatusListener();
     }
 
-    private void sendNmaNotification(NotificationType type, String sender, String content) throws NotificationFailedException {
-        URIBuilder builder = new URIBuilder(this.baseUri);
-
+    private int getPriority(NotificationType type, String userId){
         Integer priority = this.priorityMap.get(type);
 
         if (priority == null){
             priority = DEFAULT_PRIORITY;
         }
+
+        Integer userBoost = this.userPriorityBoost.get(userId);
+
+        if (userBoost != null){
+            priority += userBoost;
+        }
+
+        return priority;
+    }
+
+    private void sendNmaNotification(NotificationType type, String userId, String name, String content) throws NotificationFailedException {
+URIBuilder builder = new URIBuilder(this.baseUri);
+
+        int priority = getPriority(type, userId);
 
         if (priority >= -2){
             if (priority > 2){
@@ -138,7 +194,7 @@ public class SkypeNotifyMyAndroid {
 
             builder.addParameter("apikey", this.apiKey);
             builder.addParameter("application", this.application);
-            builder.addParameter("event", sender);
+            builder.addParameter("event", name);
             builder.addParameter("description", content);
             builder.addParameter("priority", Integer.toString(priority));
 
