@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 public class SkypeNotifyMyAndroid {
 
-    private enum NotificationType { Status, Message };
+    private enum NotificationType { Status, Message }
 
     private static final Logger LOG = Logger.getLogger(SkypeNotifyMyAndroid.class.getName());
 
@@ -43,6 +43,8 @@ public class SkypeNotifyMyAndroid {
 
     private Map<NotificationType, Integer> priorityMap = new HashMap<NotificationType, Integer>();
     private Map<String, Integer> userPriorityBoost = new HashMap<String, Integer>();
+
+    private Properties configuration;
 
     private class UserStatusListener extends UserListenerAdapter {
         @Override
@@ -94,22 +96,18 @@ public class SkypeNotifyMyAndroid {
         this(null);
     }
 
-    public SkypeNotifyMyAndroid(String userBoostFile){
-        InputStream is = null;
+    public SkypeNotifyMyAndroid(String configFile){
 
         try {
-            this.apiKey = System.getProperty(PROP_APIKEY);
+            this.configuration = loadProperties(configFile);
 
-            is = SkypeNotifyMyAndroid.class.getResourceAsStream("/notifymyandroid.properties");
-            Properties props = new Properties();
-            props.load(is);
-
-            String baseUrl = props.getProperty(PROP_BASE_URL);
-            this.application = props.getProperty(PROP_APPLICATION);
+            this.apiKey = getProperty(PROP_APIKEY);
+            String baseUrl = getProperty(PROP_BASE_URL);
+            this.application = getProperty(PROP_APPLICATION);
 
             for (NotificationType ntype : NotificationType.values()){
                 String propName = PROP_PRIORITY_BASE + ntype.name();
-                String propValueStr = props.getProperty(propName);
+                String propValueStr = getProperty(propName);
                 int propValue;
 
                 propValue = StringUtils.isBlank(propValueStr) ? DEFAULT_PRIORITY : Integer.parseInt(propValueStr);
@@ -117,38 +115,23 @@ public class SkypeNotifyMyAndroid {
                 this.priorityMap.put(ntype, propValue);
             }
 
-            if (StringUtils.isBlank(userBoostFile) == false){
-                this.userPriorityBoost = loadUserPriorityBoostFile(userBoostFile);
-            }
+            this.userPriorityBoost = getUserPriorityBoost(this.configuration);
 
             this.baseUri = new URI(baseUrl);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load configuration properties");
         } catch (URISyntaxException e) {
             throw new RuntimeException("Failed to parse URI for SkypeNotifyMyAndroid");
-        } finally {
-            if (is != null){
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    LOG.log(Level.SEVERE, "Failed to close properties file after reading", e);
-                }
-            }
         }
     }
 
-    private Map<String, Integer> loadUserPriorityBoostFile(String filename) throws IOException {
-        Properties props = new Properties();
-        BufferedReader reader = new BufferedReader(new FileReader(filename));
-
-        props.load(reader);
-
+    private Map<String, Integer> getUserPriorityBoost(Properties config) throws IOException {
         Map<String, Integer> boostMap = new HashMap<String, Integer>();
 
-        for (String propertyName : props.stringPropertyNames()){
+        for (String propertyName : config.stringPropertyNames()){
             if (propertyName.startsWith(PROP_USER_BASE)){
                 String name = propertyName.substring(PROP_USER_BASE.length());
-                String valueStr = props.getProperty(propertyName);
+                String valueStr = config.getProperty(propertyName);
 
                 if (StringUtils.isBlank(valueStr) == false){
                     int value = Integer.parseInt(valueStr);
@@ -157,7 +140,6 @@ public class SkypeNotifyMyAndroid {
                 }
             }
         }
-        reader.close();
 
         return boostMap;
     }
@@ -182,8 +164,31 @@ public class SkypeNotifyMyAndroid {
         return priority;
     }
 
+    private Properties loadProperties(String externalFile) throws IOException {
+        Properties props = new Properties();
+        InputStream is =  SkypeNotifyMyAndroid.class.getResourceAsStream("/notifymyandroid.properties");
+        props.load(is);
+        is.close();
+
+        BufferedReader reader = new BufferedReader(new FileReader(externalFile));
+        props.load(reader);
+        reader.close();
+
+        return props;
+    }
+
+    private String getProperty(String propertyName){
+        String prop = System.getProperty(propertyName);
+
+        if (this.configuration != null && StringUtils.isBlank(prop)){
+            prop = this.configuration.getProperty(propertyName);
+        }
+
+        return prop;
+    }
+
     private void sendNmaNotification(NotificationType type, String userId, String name, String content) throws NotificationFailedException {
-URIBuilder builder = new URIBuilder(this.baseUri);
+        URIBuilder builder = new URIBuilder(this.baseUri);
 
         int priority = getPriority(type, userId);
 
