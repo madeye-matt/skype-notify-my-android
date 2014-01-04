@@ -25,6 +25,7 @@ I believe these to be an improved version of the now defunct Skype Java API, obt
 
 This application accepts an external properties file, which may contain the following items. Alternatively, these can be set with -D system properties.
 
+* nma.apikey - the NMA apikey to use for Notify My Android REST API operations
 * nma.base_url - the base URL for the Notify My Android "notify" REST operation
 * nma.application_name - the application name to use for the NMA notification
 * nma.priority.Status - the default priority for Skype status change notifications (if less than -2 then notifications are suppressed. Can be modded by user - see below)
