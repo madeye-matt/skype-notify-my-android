@@ -57,6 +57,8 @@ public class SkypeNotifyMyAndroid {
             String statusStr = status.toString();
 
             try {
+                System.out.println(displayName + ": " + statusStr);
+
                 sendNmaNotification(NotificationType.Status, userId, displayName, "Status: " + statusStr);
             } catch (NotificationFailedException e) {
                 LOG.log(Level.WARNING, "Failed to Notify My Android", e);
@@ -79,13 +81,15 @@ public class SkypeNotifyMyAndroid {
                 String content = received.getContent();
                 String sender = received.getSenderDisplayName();
                 String userId = received.getId();
+                ChatMessage.Status status = received.getStatus();
 
-                System.out.println("From " + sender + ": " + content);
-
-                try {
-                    nma.sendNmaNotification(NotificationType.Message, userId, sender, content);
-                } catch (NotificationFailedException e) {
-                    LOG.log(Level.WARNING, "Failed to Notify My Android", e);
+                System.out.println("From " + sender + ": " + content + " (" + status.name() + ", " + received.getTime() + ", " + received.getType().name() + ")");
+                if (status == ChatMessage.Status.RECEIVED){
+                    try {
+                        nma.sendNmaNotification(NotificationType.Message, userId, sender, content);
+                    } catch (NotificationFailedException e) {
+                        LOG.log(Level.WARNING, "Failed to Notify My Android", e);
+                    }
                 }
             }
         });
