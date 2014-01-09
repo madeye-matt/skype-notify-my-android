@@ -1,6 +1,6 @@
 package com.madeye.notify;
 
-class NotificationFailedException extends Exception {
+class NotificationFailedException extends NotificationException {
     public NotificationFailedException(String message) {
         super(message);
     }

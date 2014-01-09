@@ -57,7 +57,7 @@ public class SkypeNotifyMyAndroid {
             String statusStr = status.toString();
 
             try {
-                System.out.println(displayName + ": " + statusStr);
+                LOG.log(Level.INFO, displayName + ": " + statusStr);
 
                 sendNmaNotification(NotificationType.Status, userId, displayName, "Status: " + statusStr);
             } catch (NotificationFailedException e) {
@@ -83,7 +83,7 @@ public class SkypeNotifyMyAndroid {
                 String userId = received.getId();
                 ChatMessage.Status status = received.getStatus();
 
-                System.out.println("From " + sender + ": " + content + " (" + status.name() + ", " + received.getTime() + ", " + received.getType().name() + ")");
+                LOG.log(Level.INFO, "From " + sender + ": " + content + " (" + status.name() + ", " + received.getTime() + ", " + received.getType().name() + ")");
                 if (status == ChatMessage.Status.RECEIVED){
                     try {
                         nma.sendNmaNotification(NotificationType.Message, userId, sender, content);
@@ -96,11 +96,11 @@ public class SkypeNotifyMyAndroid {
         Skype.addUserListener(nma.createUserStatusListener());
     }
 
-    public SkypeNotifyMyAndroid(){
+    public SkypeNotifyMyAndroid() throws NotificationException {
         this(null);
     }
 
-    public SkypeNotifyMyAndroid(String configFile){
+    public SkypeNotifyMyAndroid(String configFile) throws NotificationException {
 
         try {
             this.configuration = loadProperties(configFile);
@@ -108,6 +108,10 @@ public class SkypeNotifyMyAndroid {
             this.apiKey = getProperty(PROP_APIKEY);
             String baseUrl = getProperty(PROP_BASE_URL);
             this.application = getProperty(PROP_APPLICATION);
+
+            if (StringUtils.isBlank(this.apiKey)){
+                throw new NotificationException("No API key supplied");
+            }
 
             for (NotificationType ntype : NotificationType.values()){
                 String propName = PROP_PRIORITY_BASE + ntype.name();
@@ -213,6 +217,9 @@ public class SkypeNotifyMyAndroid {
                 CloseableHttpClient httpclient = HttpClients.createDefault();
 
                 URI uri = builder.build();
+
+                LOG.log(Level.INFO, "URI: " + uri);
+
                 HttpGet get = new HttpGet(uri);
 
                 response = httpclient.execute(get);
@@ -228,9 +235,9 @@ public class SkypeNotifyMyAndroid {
                     throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API - status code: " + statusCode);
                 }
             } catch (IOException e) {
-                throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API");
+                throw new NotificationFailedException("Failed to call SkypeNotifyMyAndroid REST API", e);
             } catch (URISyntaxException e) {
-                throw new NotificationFailedException("Failed to build URI for SkypeNotifyMyAndroid");
+                throw new NotificationFailedException("Failed to build URI for SkypeNotifyMyAndroid", e);
             } finally {
                 if (response != null){
                     try {
