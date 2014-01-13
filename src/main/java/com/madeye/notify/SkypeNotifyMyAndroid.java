@@ -10,6 +10,8 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -20,14 +22,14 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class SkypeNotifyMyAndroid {
 
     private enum NotificationType { Status, Message }
 
-    private static final Logger LOG = Logger.getLogger(SkypeNotifyMyAndroid.class.getName());
+//    private static final Logger LOG = Logger.getLogger(SkypeNotifyMyAndroid.class.getName());
+
+    private static final Logger LOG = LoggerFactory.getLogger(SkypeNotifyMyAndroid.class);
 
     private static final String PROP_APIKEY = "nma.apikey";
     private static final String PROP_APPLICATION = "nma.application_name";
@@ -46,6 +48,9 @@ public class SkypeNotifyMyAndroid {
 
     private Properties configuration;
 
+    static {
+    }
+
     private class UserStatusListener extends UserListenerAdapter {
         @Override
         public void statusMonitor(User.Status status, User user) throws SkypeException {
@@ -57,17 +62,19 @@ public class SkypeNotifyMyAndroid {
             String statusStr = status.toString();
 
             try {
-                LOG.log(Level.INFO, displayName + ": " + statusStr);
+                LOG.info(displayName + ": " + statusStr);
 
                 sendNmaNotification(NotificationType.Status, userId, displayName, "Status: " + statusStr);
             } catch (NotificationFailedException e) {
-                LOG.log(Level.WARNING, "Failed to Notify My Android", e);
+                LOG.warn("Failed to Notify My Android", e);
             }
         }
     }
 
     public static void main(String[] args) throws Exception {
         final SkypeNotifyMyAndroid nma;
+
+        LOG.info("Skype Notify My Android running");
 
         if (args.length > 0){
             nma = new SkypeNotifyMyAndroid(args[0]);
@@ -83,12 +90,12 @@ public class SkypeNotifyMyAndroid {
                 String userId = received.getId();
                 ChatMessage.Status status = received.getStatus();
 
-                LOG.log(Level.INFO, "From " + sender + ": " + content + " (" + status.name() + ", " + received.getTime() + ", " + received.getType().name() + ")");
+                LOG.info("From " + sender + ": " + content + " (" + status.name() + ", " + received.getTime() + ", " + received.getType().name() + ")");
                 if (status == ChatMessage.Status.RECEIVED){
                     try {
                         nma.sendNmaNotification(NotificationType.Message, userId, sender, content);
                     } catch (NotificationFailedException e) {
-                        LOG.log(Level.WARNING, "Failed to Notify My Android", e);
+                        LOG.warn("Failed to Notify My Android", e);
                     }
                 }
             }
@@ -218,7 +225,7 @@ public class SkypeNotifyMyAndroid {
 
                 URI uri = builder.build();
 
-                LOG.log(Level.INFO, "URI: " + uri);
+                LOG.debug("URI: " + uri);
 
                 HttpGet get = new HttpGet(uri);
 
@@ -243,7 +250,7 @@ public class SkypeNotifyMyAndroid {
                     try {
                         response.close();
                     } catch (IOException e) {
-                        LOG.log(Level.SEVERE, "Failed to close HTTP connection to SkypeNotifyMyAndroid", e);
+                        LOG.error("Failed to close HTTP connection to SkypeNotifyMyAndroid", e);
                     }
                 }
             }
